@@ -10,41 +10,46 @@ import (
 )
 
 func TestProcess(t *testing.T) {
-	pool := NewPool(50)
-
+	runtime.GOMAXPROCS(10)
 	go func() {
-		t := time.NewTicker(100 * time.Millisecond)
-		for true {
-			select {
-			case <-t.C:
-				fmt.Println(runtime.NumGoroutine())
+
+		pool := NewPool(50)
+
+		time.Sleep(1 * time.Second)
+		//w := &sync.WaitGroup{}
+		//w.Add(100)
+
+		for i := 0; i < 100; i++ {
+			var p func()
+			index := i
+			if i%2 == 0 {
+				p = func() {
+					defer func() {
+						err := recover()
+						if err != nil {
+							fmt.Println(err)
+						}
+					}()
+					fmt.Println(index, "hello:"+strconv.Itoa(index))
+					panic("err")
+				}
+			} else {
+				p = func() {
+					time.Sleep(1 * time.Second)
+					fmt.Println(index, time.Now())
+				}
 			}
+			pool.Send(p)
 		}
 	}()
 
-	w := &sync.WaitGroup{}
-	w.Add(100)
-
-	for i := 0; i < 100; i++ {
-		var p func()
-		index := i
-		if i%2 == 0 {
-			p = func() {
-				defer w.Done()
-				fmt.Println(index, "hello:"+strconv.Itoa(index))
-			}
-		} else {
-			p = func() {
-				defer w.Done()
-				time.Sleep(1 * time.Second)
-				fmt.Println(index, time.Now())
-			}
+	ticker := time.NewTicker(200 * time.Millisecond)
+	for true {
+		select {
+		case <-ticker.C:
+			fmt.Println("num of routine:", runtime.NumGoroutine())
 		}
-		pool.Send(p)
 	}
-
-	w.Wait()
-
 }
 
 type job struct {

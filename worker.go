@@ -1,5 +1,10 @@
 package worker
 
+import (
+	"fmt"
+	"runtime/debug"
+)
+
 //------------------------------------------------------------------------------
 
 // workRequest is a struct containing context representing a workers intention
@@ -41,7 +46,17 @@ func (w *workerWrapper) run() {
 		}:
 			select {
 			case payload := <-jobChan:
-				payload()
+				r := func() {
+					defer func() {
+						err := recover()
+						if err != nil {
+							fmt.Println(err)
+							debug.PrintStack()
+						}
+					}()
+					payload()
+				}
+				r()
 			}
 		}
 	}
